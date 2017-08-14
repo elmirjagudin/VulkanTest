@@ -1,5 +1,3 @@
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -9,17 +7,9 @@
 #include <iostream>
 #include <vector>
 
+#include "main.h"
 #include "utils.h"
 #include "dump.h"
-
-typedef struct handles_s
-{
-	GLFWwindow* window;
-	VkInstance instance;
-	VkDebugReportCallbackEXT debug_cb;
-	VkSurfaceKHR surface;
-} handles_t;
-
 
 static void
 init_gui(handles_t *handles)
@@ -84,6 +74,47 @@ get_layers(uint32_t *count)
 	return layers;
 }
 
+static bool
+is_device_suitable(VkPhysicalDevice device)
+{
+	/*
+	 * must be discrete device
+	 */
+	VkPhysicalDeviceProperties props;
+	vkGetPhysicalDeviceProperties(device, &props);
+	if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+	{
+		return false;
+	}
+
+	/*
+	 * must support VK_KHR_swapchain extension
+	 */
+	bool supportSwapchain = false;
+	uint32_t count;
+	vkEnumerateDeviceExtensionProperties(device, NULL, &count, NULL);
+	std::vector<VkExtensionProperties> extensions(count);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+
+	for (auto ext = extensions.begin(); ext != extensions.end(); ++ext)
+	{
+		if (strncmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, ext->extensionName, strlen(VK_KHR_SWAPCHAIN_EXTENSION_NAME)) == 0)
+		{
+			supportSwapchain = true;
+			break;
+		}
+	}
+
+	if (!supportSwapchain)
+	{
+		return false;
+	}
+
+	printf("Using %s for rendering\n", props.deviceName);
+	return true;
+
+}
+
 static void
 get_phy_device(VkInstance instance, VkPhysicalDevice *device)
 {
@@ -96,10 +127,8 @@ get_phy_device(VkInstance instance, VkPhysicalDevice *device)
 	VkPhysicalDeviceProperties props;
 	for (auto dev = devices.begin(); dev != devices.end(); ++dev)
 	{
-		vkGetPhysicalDeviceProperties(*dev, &props);
-		if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+		if (is_device_suitable(*dev))
 		{
-			printf("Using %s for rendering\n", props.deviceName);
 			*device = *dev;
 			return;
 		}
@@ -109,39 +138,83 @@ get_phy_device(VkInstance instance, VkPhysicalDevice *device)
 }
 
 static void
-get_gfx_queue_family(VkPhysicalDevice device, uint32_t *queueFamilyIndex)
+get_queue_families(handles_t *handles,
+	               VkPhysicalDevice device,
+	               uint32_t *gfxFamilyIndex,
+	               uint32_t *presentationFamilyIndex)
 {
 	uint32_t count;
+	int32_t gfxIdx = -1;
+	int32_t presIdx = -1;
 
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, NULL);
 	std::vector<VkQueueFamilyProperties> qFamilies(count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, qFamilies.data());
 
-	for (std::size_t i = 0; i < qFamilies.size(); i += 1)
+	for (int32_t i = 0; i < qFamilies.size(); i += 1)
 	{
 		auto props = qFamilies[i];
-		if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+
+		if (gfxIdx == -1 && props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
-			*queueFamilyIndex = (uint32_t)i;
-			return;
+			gfxIdx = i;
+		}
+
+		if (presIdx == -1)
+		{
+			VkBool32 pSupported;
+			check_res(vkGetPhysicalDeviceSurfaceSupportKHR(
+				device,
+				i,
+				handles->surface,
+				&pSupported),
+				"vkGetPhysicalDeviceSurfaceSupportKHR error");
+			presIdx = i;
 		}
 	}
 
-	bail_out("No queue supporting graphics operations found.");
+	if (gfxIdx == -1)
+	{
+		bail_out("no graphics queue familty found");
+	}
+
+	if (presIdx == -1)
+	{
+		bail_out("no presentation queue familty found");
+	}
+
+	*gfxFamilyIndex = gfxIdx;
+	*presentationFamilyIndex = presIdx;
 }
 
 static void
-init_device(VkInstance instance)
+init_device(handles_t *handles)
 {
 	VkPhysicalDevice dev;
-	get_phy_device(instance, &dev);
+	get_phy_device(handles->instance, &dev);
 
 	/*
 	 * allocate one graphics capable queue
 	 */
+
+	uint32_t gfxFamilyIndex;
+	uint32_t presentationFamilyIndex;
+
+	get_queue_families(handles, dev, &gfxFamilyIndex, &presentationFamilyIndex);
+	printf("gfx queue %d, pres queue %d\n", gfxFamilyIndex, presentationFamilyIndex);
+
+	if (gfxFamilyIndex != presentationFamilyIndex)
+	{
+		/*
+		 * to lazy to impement this now, as nvidia GTX 1060 have same queue
+		 * family for  both graphics and presentation
+		 */
+		bail_out("different queue familties for graphics and presentation not supported");
+	}
+
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	get_gfx_queue_family(dev, &queueCreateInfo.queueFamilyIndex);
+	queueCreateInfo.queueFamilyIndex = gfxFamilyIndex;
 	queueCreateInfo.queueCount = 1;
 	float queuePriority = 1.0f;
 	queueCreateInfo.pQueuePriorities = &queuePriority;
@@ -162,6 +235,9 @@ init_device(VkInstance instance)
 	VkDevice ldev;
 	check_res(vkCreateDevice(dev, &createInfo, NULL, &ldev), "vkCreateDevice error");
 
+	vkGetDeviceQueue(ldev, gfxFamilyIndex, 0, &(handles->gfxQueue));
+	/* we are cheating here as we know that gfx and presentation queue are the same */
+	handles->presentationQueue = handles->gfxQueue;
 }
 
 static void
@@ -200,8 +276,6 @@ init_vulkan(handles_t *handles)
 
 	func(handles->instance, &dbgCallbackInfo, NULL, &(handles->debug_cb));
 
-	//dump_gfx_cards(*instance);
-
 	/*
 	 * init window surface
 	 */
@@ -212,10 +286,12 @@ init_vulkan(handles_t *handles)
 								&(handles->surface)),
 		"error creating window surface");
 
+	dump_gfx_cards(handles);
+
 	/*
 	 * init device
 	 */
-	init_device(handles->instance);
+	init_device(handles);
 }
 
 static void

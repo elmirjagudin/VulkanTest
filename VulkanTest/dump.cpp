@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.h>
 #include <stdio.h>
 
+#include "dump.h"
 #include "utils.h"
 #include <vector>
 
@@ -55,36 +56,65 @@ yes_no(VkBool32 b)
 	return b ? "yes" : "no";
 }
 
-static void dump_queues(VkPhysicalDevice device)
+static void dump_queues(handles_t *handles, VkPhysicalDevice device)
 {
 	uint32_t count;
 
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, NULL);
-	printf("Has %d queue familys\n", count);
+	printf("Has %d queue families\n", count);
 
 	std::vector<VkQueueFamilyProperties> qFamilies(count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, qFamilies.data());
 
-	for (auto qf = qFamilies.begin(); qf != qFamilies.end(); ++qf)
+	for (uint32_t i = 0; i < qFamilies.size(); i += 1)
 	{
-		printf("Graphics %s Compute %s Transfer %s\n",
-			   yes_no(qf->queueFlags & VK_QUEUE_GRAPHICS_BIT),
-			   yes_no(qf->queueFlags & VK_QUEUE_COMPUTE_BIT),
-			   yes_no(qf->queueFlags & VK_QUEUE_TRANSFER_BIT));
-		printf("queue count %d\n", qf->queueCount);
+		auto qf = qFamilies[i];
+
+		VkBool32 pSupported;
+		check_res(vkGetPhysicalDeviceSurfaceSupportKHR(
+					device,
+					i,
+					handles->surface,
+                    &pSupported),
+				  "vkGetPhysicalDeviceSurfaceSupportKHR error while dumping");
+
+		printf("Graphics %s Compute %s Transfer %s Presentation %s\n",
+			   yes_no(qf.queueFlags & VK_QUEUE_GRAPHICS_BIT),
+			   yes_no(qf.queueFlags & VK_QUEUE_COMPUTE_BIT),
+			   yes_no(qf.queueFlags & VK_QUEUE_TRANSFER_BIT),
+			   yes_no(pSupported));
+
+		printf("queue count %d\n", qf.queueCount);
+	}
+}
+
+static void
+dump_gfx_card_extensions(VkPhysicalDevice device)
+{
+	uint32_t count;
+
+	vkEnumerateDeviceExtensionProperties(device, NULL, &count, NULL);
+	printf("have %d extensions\n", count);
+
+	std::vector<VkExtensionProperties> extensions(count);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+
+	for (auto ext = extensions.begin(); ext != extensions.end(); ++ext)
+	{
+		printf("%s\n", ext->extensionName);
 	}
 }
 
 void 
-dump_gfx_cards(VkInstance instance)
+dump_gfx_cards(handles_t *handles)
 {
 	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
+	vkEnumeratePhysicalDevices(handles->instance, &deviceCount, NULL);
 
 	printf("I see %d device%s\n", deviceCount, deviceCount > 1 ? "s" : "");
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);
-	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+	vkEnumeratePhysicalDevices(handles->instance, &deviceCount, devices.data());
 
 	for (auto it = devices.begin(); it != devices.end(); ++it)
 	{
@@ -105,7 +135,9 @@ dump_gfx_cards(VkInstance instance)
 			   yes_no(feat.multiViewport),
 			   yes_no(feat.geometryShader));
 
-		dump_queues(*it);
+		dump_gfx_card_extensions(*it);
+
+		dump_queues(handles, *it);
 
 		printf("--------\n");
 	}
