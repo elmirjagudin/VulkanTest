@@ -94,7 +94,7 @@ dump_gfx_card_extensions(VkPhysicalDevice device)
 	uint32_t count;
 
 	vkEnumerateDeviceExtensionProperties(device, NULL, &count, NULL);
-	printf("have %d extensions\n", count);
+	printf("device have %d extensions\n", count);
 
 	std::vector<VkExtensionProperties> extensions(count);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());

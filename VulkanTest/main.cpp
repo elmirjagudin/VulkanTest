@@ -74,9 +74,20 @@ get_layers(uint32_t *count)
 	return layers;
 }
 
-static bool
-is_device_suitable(VkPhysicalDevice device)
+static const char * const*
+get_device_extensions(uint32_t *count)
 {
+	*count = 1;
+	static char *extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	return extensions;
+}
+
+
+static bool
+is_device_suitable(handles_t *handles, VkPhysicalDevice device)
+{
+	uint32_t count;
+
 	/*
 	 * must be discrete device
 	 */
@@ -90,8 +101,7 @@ is_device_suitable(VkPhysicalDevice device)
 	/*
 	 * must support VK_KHR_swapchain extension
 	 */
-	bool supportSwapchain = false;
-	uint32_t count;
+	bool supportSwapchain = false;	
 	vkEnumerateDeviceExtensionProperties(device, NULL, &count, NULL);
 	std::vector<VkExtensionProperties> extensions(count);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
@@ -110,24 +120,57 @@ is_device_suitable(VkPhysicalDevice device)
 		return false;
 	}
 
+	///*
+	// * check surface caps
+	// */
+	//VkSurfaceCapabilitiesKHR pSurfaceCapabilities;
+	//check_res(
+	//	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device,
+	//		handles->surface,
+	//		&pSurfaceCapabilities),
+	//	"vkGetPhysicalDeviceSurfaceCapabilitiesKHR error");
+
+	/*
+	 * surface formats
+	 */
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, handles->surface, &count, NULL);
+	if (count < 1)
+	{
+		printf("no surface formats supported\n");
+		return false;
+	}
+	std::vector<VkSurfaceFormatKHR> formats(count);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, handles->surface, &count, formats.data());
+	
+	/*
+	 * presentation modes
+	 */
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, handles->surface, &count, NULL);
+	if (count < 1)
+	{
+		printf("no presentation modes supported\n");
+		return false;
+	}
+	//std::vector<VkPresentModeKHR> presentationModes(count);
+	//vkGetPhysicalDeviceSurfacePresentModesKHR(device, handles->surface, &count, presentationModes.data());
+
 	printf("Using %s for rendering\n", props.deviceName);
 	return true;
 
 }
 
 static void
-get_phy_device(VkInstance instance, VkPhysicalDevice *device)
+get_phy_device(handles_t *handles, VkPhysicalDevice *device)
 {
 	uint32_t deviceCount = 0;
 
-	vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
+	vkEnumeratePhysicalDevices(handles->instance, &deviceCount, NULL);
 	std::vector<VkPhysicalDevice> devices(deviceCount);
-	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+	vkEnumeratePhysicalDevices(handles->instance, &deviceCount, devices.data());
 
-	VkPhysicalDeviceProperties props;
 	for (auto dev = devices.begin(); dev != devices.end(); ++dev)
 	{
-		if (is_device_suitable(*dev))
+		if (is_device_suitable(handles, *dev))
 		{
 			*device = *dev;
 			return;
@@ -191,7 +234,7 @@ static void
 init_device(handles_t *handles)
 {
 	VkPhysicalDevice dev;
-	get_phy_device(handles->instance, &dev);
+	get_phy_device(handles, &dev);
 
 	/*
 	 * allocate one graphics capable queue
@@ -229,7 +272,7 @@ init_device(handles_t *handles)
 	createInfo.queueCreateInfoCount = 1;
 	createInfo.pQueueCreateInfos = &queueCreateInfo;
 	createInfo.pEnabledFeatures = &deviceFeatures;
-	createInfo.enabledExtensionCount = 0;
+	createInfo.ppEnabledExtensionNames = get_device_extensions(&createInfo.enabledExtensionCount);
 	createInfo.ppEnabledLayerNames = get_layers(&createInfo.enabledLayerCount);
 
 	VkDevice ldev;
