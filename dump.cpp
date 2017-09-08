@@ -50,7 +50,7 @@ dump_extensions()
 	}
 }
 
-static char *
+static const char *
 yes_no(VkBool32 b)
 {
 	return b ? "yes" : "no";

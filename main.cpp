@@ -3,6 +3,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
+#include <string.h>
 
 #include <iostream>
 #include <vector>
@@ -70,7 +71,7 @@ static const char * const*
 get_layers(uint32_t *count)
 {
 	*count = 1;
-	static char *layers[1] = { "VK_LAYER_LUNARG_standard_validation" };
+	static const char *layers[1] = { "VK_LAYER_LUNARG_standard_validation" };
 	return layers;
 }
 
@@ -78,7 +79,7 @@ static const char * const*
 get_device_extensions(uint32_t *count)
 {
 	*count = 1;
-	static char *extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	static const char *extensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 	return extensions;
 }
 
@@ -194,7 +195,7 @@ get_queue_families(handles_t *handles,
 	std::vector<VkQueueFamilyProperties> qFamilies(count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, qFamilies.data());
 
-	for (int32_t i = 0; i < qFamilies.size(); i += 1)
+	for (uint32_t i = 0; i < qFamilies.size(); i += 1)
 	{
 		auto props = qFamilies[i];
 

@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <vulkan\vulkan.h>
+#include <vulkan/vulkan.h>
 
 void
-bail_out(char *msg)
+bail_out(const char *msg)
 {
 	printf("error: %s", msg);
 	fgetc(stdin);
@@ -11,7 +11,7 @@ bail_out(char *msg)
 }
 
 void
-check_res(VkResult res, char *msg)
+check_res(VkResult res, const char *msg)
 {
 	if (res != VK_SUCCESS)
 	{

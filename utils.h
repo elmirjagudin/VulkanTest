@@ -1,7 +1,7 @@
 #pragma once
 
 void
-bail_out(char *msg);
+bail_out(const char *msg);
 
 void
-check_res(VkResult res, char *msg);
+check_res(VkResult res, const char *msg);
