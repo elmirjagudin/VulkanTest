@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include <iostream>
-#include <vector>
 
 #include "main.h"
 #include "utils.h"
@@ -121,18 +120,9 @@ is_device_suitable(handles_t *handles, VkPhysicalDevice device)
 		return false;
 	}
 
-	///*
-	// * check surface caps
-	// */
-	//VkSurfaceCapabilitiesKHR pSurfaceCapabilities;
-	//check_res(
-	//	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device,
-	//		handles->surface,
-	//		&pSurfaceCapabilities),
-	//	"vkGetPhysicalDeviceSurfaceCapabilitiesKHR error");
-
 	/*
-	 * surface formats
+     * check that VK_FORMAT_B8G8R8A8_UNORM surface format is
+     * supported
 	 */
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, handles->surface, &count, NULL);
 	if (count < 1)
@@ -140,8 +130,24 @@ is_device_suitable(handles_t *handles, VkPhysicalDevice device)
 		printf("no surface formats supported\n");
 		return false;
 	}
-	std::vector<VkSurfaceFormatKHR> formats(count);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, handles->surface, &count, formats.data());
+    std::vector<VkSurfaceFormatKHR> formats(count);
+
+    bool VK_FORMAT_B8G8R8A8_UNORM_supported = false;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, handles->surface, &count, formats.data());
+    for (auto format = formats.begin(); format != formats.end(); ++format)
+	{
+        if (VK_FORMAT_B8G8R8A8_UNORM == format->format)
+        {
+            VK_FORMAT_B8G8R8A8_UNORM_supported = true;
+            break;
+        }
+    }
+
+    if (!VK_FORMAT_B8G8R8A8_UNORM_supported)
+    {
+        printf("VK_FORMAT_B8G8R8A8_UNORM format not supported\n");
+        return false;
+    }
 	
 	/*
 	 * presentation modes
@@ -152,8 +158,8 @@ is_device_suitable(handles_t *handles, VkPhysicalDevice device)
 		printf("no presentation modes supported\n");
 		return false;
 	}
-	//std::vector<VkPresentModeKHR> presentationModes(count);
-	//vkGetPhysicalDeviceSurfacePresentModesKHR(device, handles->surface, &count, presentationModes.data());
+	std::vector<VkPresentModeKHR> presentationModes(count);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, handles->surface, &count, presentationModes.data());
 
 	printf("Using %s for rendering\n", props.deviceName);
 	return true;
@@ -178,12 +184,11 @@ get_phy_device(handles_t *handles, VkPhysicalDevice *device)
 		}
 	}
 
-	bail_out("No descrete GPU found");
+	bail_out("No suitable GPU found");
 }
 
 static void
 get_queue_families(handles_t *handles,
-	               VkPhysicalDevice device,
 	               uint32_t *gfxFamilyIndex,
 	               uint32_t *presentationFamilyIndex)
 {
@@ -191,9 +196,9 @@ get_queue_families(handles_t *handles,
 	int32_t gfxIdx = -1;
 	int32_t presIdx = -1;
 
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties(handles->phyDevice, &count, NULL);
 	std::vector<VkQueueFamilyProperties> qFamilies(count);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, qFamilies.data());
+	vkGetPhysicalDeviceQueueFamilyProperties(handles->phyDevice, &count, qFamilies.data());
 
 	for (uint32_t i = 0; i < qFamilies.size(); i += 1)
 	{
@@ -208,7 +213,7 @@ get_queue_families(handles_t *handles,
 		{
 			VkBool32 pSupported;
 			check_res(vkGetPhysicalDeviceSurfaceSupportKHR(
-				device,
+				handles->phyDevice,
 				i,
 				handles->surface,
 				&pSupported),
@@ -232,10 +237,62 @@ get_queue_families(handles_t *handles,
 }
 
 static void
+init_swapchain(handles_t *handles)
+{
+    /*
+     * get current image extend
+     */
+	VkSurfaceCapabilitiesKHR pSurfaceCapabilities;
+	check_res(
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handles->phyDevice,
+			handles->surface,
+			&pSurfaceCapabilities),
+		"vkGetPhysicalDeviceSurfaceCapabilitiesKHR error");
+
+
+    /*
+     * create swapchain
+     */
+    VkSwapchainCreateInfoKHR createInfo = {};
+
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = handles->surface;
+    createInfo.minImageCount = 1;
+    createInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    createInfo.imageExtent = pSurfaceCapabilities.currentExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    /* we don't support the case when graphics and presentation queues are different */
+    assert(handles->gfxQueue == handles->presentationQueue);
+    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.queueFamilyIndexCount = 0; // Optional
+    createInfo.pQueueFamilyIndices = nullptr; // Optional
+    createInfo.preTransform = pSurfaceCapabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    createInfo.clipped = VK_TRUE;
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    check_res(
+        vkCreateSwapchainKHR(handles->device,
+                             &createInfo,
+                             NULL,
+                             &(handles->swapchain)),
+        "vkCreateSwapchainKHR error");
+
+    uint32_t count;
+
+    vkGetSwapchainImagesKHR(handles->device, handles->swapchain, &count, nullptr);
+    handles->swapChainImages.resize(count);
+    vkGetSwapchainImagesKHR(handles->device, handles->swapchain,
+                            &count, handles->swapChainImages.data());
+}
+
+static void
 init_device(handles_t *handles)
 {
-	VkPhysicalDevice dev;
-	get_phy_device(handles, &dev);
+	get_phy_device(handles, &(handles->phyDevice));
 
 	/*
 	 * allocate one graphics capable queue
@@ -244,7 +301,7 @@ init_device(handles_t *handles)
 	uint32_t gfxFamilyIndex;
 	uint32_t presentationFamilyIndex;
 
-	get_queue_families(handles, dev, &gfxFamilyIndex, &presentationFamilyIndex);
+	get_queue_families(handles, &gfxFamilyIndex, &presentationFamilyIndex);
 	printf("gfx queue %d, pres queue %d\n", gfxFamilyIndex, presentationFamilyIndex);
 
 	if (gfxFamilyIndex != presentationFamilyIndex)
@@ -276,10 +333,11 @@ init_device(handles_t *handles)
 	createInfo.ppEnabledExtensionNames = get_device_extensions(&createInfo.enabledExtensionCount);
 	createInfo.ppEnabledLayerNames = get_layers(&createInfo.enabledLayerCount);
 
-	VkDevice ldev;
-	check_res(vkCreateDevice(dev, &createInfo, NULL, &ldev), "vkCreateDevice error");
+	check_res(
+        vkCreateDevice(handles->phyDevice, &createInfo, NULL, &(handles->device)),
+        "vkCreateDevice error");
 
-	vkGetDeviceQueue(ldev, gfxFamilyIndex, 0, &(handles->gfxQueue));
+	vkGetDeviceQueue(handles->device, gfxFamilyIndex, 0, &(handles->gfxQueue));
 	/* we are cheating here as we know that gfx and presentation queue are the same */
 	handles->presentationQueue = handles->gfxQueue;
 }
@@ -330,17 +388,21 @@ init_vulkan(handles_t *handles)
 								&(handles->surface)),
 		"error creating window surface");
 
-	dump_gfx_cards(handles);
+	//dump_gfx_cards(handles);
 
 	/*
-	 * init device
+	 * init device & swapchain
 	 */
-	init_device(handles);
+    init_device(handles);
+    init_swapchain(handles);
 }
 
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    /* destroy swapchain */
+    vkDestroySwapchainKHR(handles->device, handles->swapchain, NULL);
+
 	/* destroy debug callback handle */
 	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(
 		handles->instance,

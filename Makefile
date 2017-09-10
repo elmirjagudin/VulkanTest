@@ -4,5 +4,5 @@ LDFLAGS = -L$(VULKAN_SDK_PATH)/lib -L/home/boris/vulkan/libs/usr/local/lib -lvul
 
 
 prog: main.cpp dump.cpp utils.cpp
-	g++ $(CFLAGS) -o prog main.cpp dump.cpp utils.cpp $(LDFLAGS)
+	g++ -g $(CFLAGS) -o prog main.cpp dump.cpp utils.cpp $(LDFLAGS)
 

@@ -1,6 +1,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <vector>
+
 #pragma once
 
 typedef struct handles_s
@@ -10,6 +12,10 @@ typedef struct handles_s
 	VkDebugReportCallbackEXT debug_cb;
 	VkSurfaceKHR surface;
 	VkQueue gfxQueue;
-	VkQueue presentationQueue;
+    VkQueue presentationQueue;
+    VkPhysicalDevice phyDevice;
+    VkDevice device;
+    VkSwapchainKHR swapchain;
+    std::vector<VkImage> swapChainImages;
 } handles_t;
 

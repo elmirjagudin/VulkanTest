@@ -5,7 +5,7 @@
 void
 bail_out(const char *msg)
 {
-	printf("error: %s", msg);
+	printf("error: %s\n", msg);
 	fgetc(stdin);
 	exit(EXIT_FAILURE);
 }
