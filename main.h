@@ -17,5 +17,6 @@ typedef struct handles_s
     VkDevice device;
     VkSwapchainKHR swapchain;
     std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews;
 } handles_t;
 

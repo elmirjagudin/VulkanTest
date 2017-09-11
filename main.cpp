@@ -11,6 +11,8 @@
 #include "utils.h"
 #include "dump.h"
 
+#define FRAME_BUF_FORMAT VK_FORMAT_B8G8R8A8_UNORM
+
 static void
 init_gui(handles_t *handles)
 {
@@ -258,7 +260,7 @@ init_swapchain(handles_t *handles)
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = handles->surface;
     createInfo.minImageCount = 1;
-    createInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    createInfo.imageFormat = FRAME_BUF_FORMAT;
     createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     createInfo.imageExtent = pSurfaceCapabilities.currentExtent;
     createInfo.imageArrayLayers = 1;
@@ -287,6 +289,33 @@ init_swapchain(handles_t *handles)
     handles->swapChainImages.resize(count);
     vkGetSwapchainImagesKHR(handles->device, handles->swapchain,
                             &count, handles->swapChainImages.data());
+
+    handles->swapChainImageViews.resize(count);
+    for (size_t i = 0; i < handles->swapChainImages.size(); i++)
+    {
+        VkImageViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = handles->swapChainImages[i];
+
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = FRAME_BUF_FORMAT;
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        check_res(
+            vkCreateImageView(handles->device,
+                              &viewInfo,
+                              NULL,
+                              &(handles->swapChainImageViews[i])),
+            "vkCreateImageView error");
+    }
 }
 
 static void
