@@ -16,7 +16,10 @@ typedef struct handles_s
     VkPhysicalDevice phyDevice;
     VkDevice device;
     VkSwapchainKHR swapchain;
+    VkExtent2D swapchainExtend;
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
+    VkPipeline gfxPipeline;
+    VkPipelineLayout pipelineLayout;
 } handles_t;
 

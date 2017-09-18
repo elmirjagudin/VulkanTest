@@ -10,6 +10,7 @@
 #include "main.h"
 #include "utils.h"
 #include "dump.h"
+#include "gfx_pipeline.h"
 
 #define FRAME_BUF_FORMAT VK_FORMAT_B8G8R8A8_UNORM
 
@@ -316,6 +317,8 @@ init_swapchain(handles_t *handles)
                               &(handles->swapChainImageViews[i])),
             "vkCreateImageView error");
     }
+
+    handles->swapchainExtend = pSurfaceCapabilities.currentExtent;
 }
 
 static void
@@ -420,10 +423,11 @@ init_vulkan(handles_t *handles)
 	//dump_gfx_cards(handles);
 
 	/*
-	 * init device & swapchain
+	 * init device, swapchain, graphics pipeline
 	 */
     init_device(handles);
     init_swapchain(handles);
+    create_gfk_pipeline(handles);
 }
 
 static void
