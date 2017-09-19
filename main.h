@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define FRAME_BUF_FORMAT VK_FORMAT_B8G8R8A8_UNORM
+
 typedef struct handles_s
 {
 	GLFWwindow* window;
@@ -21,5 +23,6 @@ typedef struct handles_s
     std::vector<VkImageView> swapChainImageViews;
     VkPipeline gfxPipeline;
     VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
 } handles_t;
 

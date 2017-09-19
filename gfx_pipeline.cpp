@@ -2,7 +2,43 @@
 #include "shaders.h"
 #include "utils.h"
 
-void create_gfk_pipeline(handles_t *handles)
+static void
+create_render_pass(handles_t *handles)
+{
+    VkAttachmentDescription colorAttachment = {};
+    colorAttachment.format = FRAME_BUF_FORMAT;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    VkRenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+
+    check_res(
+        vkCreateRenderPass(
+            handles->device, &renderPassInfo, NULL, &(handles->renderPass)),
+        "vkCreateRenderPass error");
+}
+
+void
+create_gfk_pipeline(handles_t *handles)
 {
     /*
      * set-up shaders
@@ -101,6 +137,9 @@ void create_gfk_pipeline(handles_t *handles)
             handles->device, &pipelineLayoutInfo,
             nullptr, &(handles->pipelineLayout)),
         "error vkCreatePipelineLayout");
+
+    /* set-up render pass */
+    create_render_pass(handles);
    
     /*
      * set-up Graphics Pipeline
@@ -116,9 +155,9 @@ void create_gfk_pipeline(handles_t *handles)
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.layout = handles->pipelineLayout;
-//    pipelineInfo.renderPass = renderPass;
-//    pipelineInfo.subpass = 0;
-//    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.renderPass = handles->renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
     check_res(
         vkCreateGraphicsPipelines(

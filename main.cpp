@@ -12,8 +12,6 @@
 #include "dump.h"
 #include "gfx_pipeline.h"
 
-#define FRAME_BUF_FORMAT VK_FORMAT_B8G8R8A8_UNORM
-
 static void
 init_gui(handles_t *handles)
 {
@@ -433,6 +431,12 @@ init_vulkan(handles_t *handles)
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    /* destroy render pass */
+    vkDestroyRenderPass(handles->device, handles->renderPass, NULL);
+    
+    /* destroy pipeline */
+    vkDestroyPipelineLayout(handles->device, handles->pipelineLayout, NULL);
+
     /* destroy swapchain */
     vkDestroySwapchainKHR(handles->device, handles->swapchain, NULL);
 
