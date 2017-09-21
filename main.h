@@ -21,6 +21,7 @@ typedef struct handles_s
     VkExtent2D swapchainExtend;
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
     VkPipeline gfxPipeline;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;

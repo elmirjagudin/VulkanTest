@@ -11,6 +11,7 @@
 #include "utils.h"
 #include "dump.h"
 #include "gfx_pipeline.h"
+#include "frame_buf.h"
 
 static void
 init_gui(handles_t *handles)
@@ -426,11 +427,15 @@ init_vulkan(handles_t *handles)
     init_device(handles);
     init_swapchain(handles);
     create_gfk_pipeline(handles);
+    create_framebuffers(handles);
 }
 
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    /* destroy frame buffers */
+    cleanup_framebuffers(handles);
+
     /* destroy render pass */
     vkDestroyRenderPass(handles->device, handles->renderPass, NULL);
     
