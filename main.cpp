@@ -12,6 +12,7 @@
 #include "dump.h"
 #include "gfx_pipeline.h"
 #include "frame_buf.h"
+#include "cmd_buf.h"
 
 static void
 init_gui(handles_t *handles)
@@ -41,7 +42,7 @@ get_vulkan_extensions()
 	const char** glfwExtensions;
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-	for (unsigned int i = 0; i < glfwExtensionCount; i++) 
+	for (unsigned int i = 0; i < glfwExtensionCount; i++)
 	{
 		exts.push_back(glfwExtensions[i]);
 	}
@@ -52,7 +53,7 @@ get_vulkan_extensions()
 	return exts;
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL 
+static VKAPI_ATTR VkBool32 VKAPI_CALL
 debugCallback(
 	VkDebugReportFlagsEXT flags,
 	VkDebugReportObjectTypeEXT objType,
@@ -103,7 +104,7 @@ is_device_suitable(handles_t *handles, VkPhysicalDevice device)
 	/*
 	 * must support VK_KHR_swapchain extension
 	 */
-	bool supportSwapchain = false;	
+	bool supportSwapchain = false;
 	vkEnumerateDeviceExtensionProperties(device, NULL, &count, NULL);
 	std::vector<VkExtensionProperties> extensions(count);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
@@ -150,7 +151,7 @@ is_device_suitable(handles_t *handles, VkPhysicalDevice device)
         printf("VK_FORMAT_B8G8R8A8_UNORM format not supported\n");
         return false;
     }
-	
+
 	/*
 	 * presentation modes
 	 */
@@ -326,27 +327,28 @@ init_device(handles_t *handles)
 	get_phy_device(handles, &(handles->phyDevice));
 
 	/*
-	 * allocate one graphics capable queue
+	 * allocate one graphics and presentation capable queue
 	 */
 
-	uint32_t gfxFamilyIndex;
-	uint32_t presentationFamilyIndex;
+    get_queue_families(handles,
+                       &(handles->gfxFamilyIndex),
+                       &(handles->presentationFamilyIndex));
+    printf("gfx queue %d, pres queue %d\n",
+           handles->gfxFamilyIndex,
+            handles->presentationFamilyIndex);
 
-	get_queue_families(handles, &gfxFamilyIndex, &presentationFamilyIndex);
-	printf("gfx queue %d, pres queue %d\n", gfxFamilyIndex, presentationFamilyIndex);
-
-	if (gfxFamilyIndex != presentationFamilyIndex)
+	if (handles->gfxFamilyIndex != handles->presentationFamilyIndex)
 	{
 		/*
 		 * to lazy to impement this now, as nvidia GTX 1060 have same queue
-		 * family for  both graphics and presentation
+		 * family for both graphics and presentation
 		 */
 		bail_out("different queue familties for graphics and presentation not supported");
 	}
 
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = gfxFamilyIndex;
+	queueCreateInfo.queueFamilyIndex = handles->gfxFamilyIndex;
 	queueCreateInfo.queueCount = 1;
 	float queuePriority = 1.0f;
 	queueCreateInfo.pQueuePriorities = &queuePriority;
@@ -368,7 +370,7 @@ init_device(handles_t *handles)
         vkCreateDevice(handles->phyDevice, &createInfo, NULL, &(handles->device)),
         "vkCreateDevice error");
 
-	vkGetDeviceQueue(handles->device, gfxFamilyIndex, 0, &(handles->gfxQueue));
+	vkGetDeviceQueue(handles->device, handles->gfxFamilyIndex, 0, &(handles->gfxQueue));
 	/* we are cheating here as we know that gfx and presentation queue are the same */
 	handles->presentationQueue = handles->gfxQueue;
 }
@@ -385,7 +387,7 @@ init_vulkan(handles_t *handles)
 	info.pNext = NULL;
 	info.flags = 0;
 	info.pApplicationInfo = NULL;
-	
+
 	info.ppEnabledLayerNames = get_layers(&info.enabledLayerCount);
 
 	auto extensions = get_vulkan_extensions();
@@ -428,17 +430,22 @@ init_vulkan(handles_t *handles)
     init_swapchain(handles);
     create_gfk_pipeline(handles);
     create_framebuffers(handles);
+    create_command_pool(handles);
+    create_command_buffers(handles);
 }
 
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    /* destroy command pool */
+    vkDestroyCommandPool(handles->device, handles->commandPool, NULL);
+
     /* destroy frame buffers */
     cleanup_framebuffers(handles);
 
     /* destroy render pass */
     vkDestroyRenderPass(handles->device, handles->renderPass, NULL);
-    
+
     /* destroy pipeline */
     vkDestroyPipelineLayout(handles->device, handles->pipelineLayout, NULL);
 
@@ -459,7 +466,7 @@ cleanup_vulkan(handles_t *handles)
 }
 
 int
-main() 
+main()
 {
 	//dump_extensions();
 	//dump_layers();

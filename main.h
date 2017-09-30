@@ -9,11 +9,13 @@
 
 typedef struct handles_s
 {
-	GLFWwindow* window;
-	VkInstance instance;
-	VkDebugReportCallbackEXT debug_cb;
-	VkSurfaceKHR surface;
-	VkQueue gfxQueue;
+    GLFWwindow* window;
+    VkInstance instance;
+    VkDebugReportCallbackEXT debug_cb;
+    VkSurfaceKHR surface;
+    uint32_t gfxFamilyIndex;
+    uint32_t presentationFamilyIndex;
+    VkQueue gfxQueue;
     VkQueue presentationQueue;
     VkPhysicalDevice phyDevice;
     VkDevice device;
@@ -25,5 +27,7 @@ typedef struct handles_s
     VkPipeline gfxPipeline;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
+    VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers;
 } handles_t;
 

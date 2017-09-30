@@ -14,7 +14,7 @@ create_framebuffers(handles_t *handles)
         VkImageView attachments[] = {
             handles->swapChainImageViews[i]
         };
-    
+
         VkFramebufferCreateInfo framebufferInfo = {};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = handles->renderPass;
@@ -23,7 +23,7 @@ create_framebuffers(handles_t *handles)
         framebufferInfo.width = handles->swapchainExtend.width;
         framebufferInfo.height = handles->swapchainExtend.height;
         framebufferInfo.layers = 1;
-    
+
         check_res(
             vkCreateFramebuffer(handles->device, &framebufferInfo,
                  NULL, &(handles->swapChainFramebuffers[i])),

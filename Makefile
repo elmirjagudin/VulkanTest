@@ -5,7 +5,7 @@ LDFLAGS = -L$(VULKAN_SDK_PATH)/lib -L/home/boris/vulkan/libs/usr/local/lib -lvul
 # shader compiler
 SHADER_C = $(VULKAN_SDK_PATH)/bin/glslangValidator -V
 
-SRC = main.cpp dump.cpp utils.cpp gfx_pipeline.cpp shaders.cpp frame_buf.cpp
+SRC = main.cpp dump.cpp utils.cpp gfx_pipeline.cpp shaders.cpp frame_buf.cpp cmd_buf.cpp
 FILES = prog frag.spv vert.spv
 
 prog: $(SRC) frag.spv vert.spv
