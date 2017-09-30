@@ -29,5 +29,7 @@ typedef struct handles_s
     VkRenderPass renderPass;
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
 } handles_t;
 

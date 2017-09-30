@@ -29,10 +29,13 @@ create_command_buffers(handles_t *handles)
         vkAllocateCommandBuffers(handles->device, &allocInfo, handles->commandBuffers.data()),
         "vkAllocateCommandBuffers");
 
-    VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+
 
     for (size_t i = 0; i < handles->commandBuffers.size(); i++)
     {
+        float clr = ((float)i) * 0.5f;
+        VkClearValue clearColor = {clr, 1-clr, 0.2f, 1.0f};
+
         /* begin command buffer recoding */
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

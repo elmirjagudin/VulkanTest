@@ -376,6 +376,24 @@ init_device(handles_t *handles)
 }
 
 static void
+create_semaphores(handles_t *handles)
+{
+    VkSemaphoreCreateInfo semaphoreInfo = {};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    check_res(
+        vkCreateSemaphore(handles->device, &semaphoreInfo,
+                          NULL, &(handles->imageAvailableSemaphore)),
+        "vkCreateSemaphore imageAvailableSemaphore");
+
+    check_res(
+        vkCreateSemaphore(handles->device, &semaphoreInfo,
+                            NULL, &(handles->renderFinishedSemaphore)),
+        "vkCreateSemaphore renderFinishedSemaphore");
+
+}
+
+static void
 init_vulkan(handles_t *handles)
 {
 	/*
@@ -432,11 +450,16 @@ init_vulkan(handles_t *handles)
     create_framebuffers(handles);
     create_command_pool(handles);
     create_command_buffers(handles);
+    create_semaphores(handles);
 }
 
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    /* destroy semaphores */
+    vkDestroySemaphore(handles->device, handles->imageAvailableSemaphore, NULL);
+    vkDestroySemaphore(handles->device, handles->renderFinishedSemaphore, NULL);
+
     /* destroy command pool */
     vkDestroyCommandPool(handles->device, handles->commandPool, NULL);
 
@@ -465,6 +488,56 @@ cleanup_vulkan(handles_t *handles)
 	vkDestroyInstance(handles->instance, NULL);
 }
 
+static void
+draw_frame(handles_t *handles)
+{
+    vkQueueWaitIdle(handles->presentationQueue);
+
+    uint32_t imageIndex;
+
+    /* acquire image */
+    check_res(
+        vkAcquireNextImageKHR(handles->device,
+                              handles->swapchain,
+                              std::numeric_limits<uint64_t>::max(),
+                              handles->imageAvailableSemaphore, VK_NULL_HANDLE,
+                              &imageIndex),
+        "vkAcquireNextImageKHR");
+
+    /* sumbit command buffer */
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore waitSemaphores[] = {handles->imageAvailableSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &(handles->commandBuffers[imageIndex]);
+    VkSemaphore signalSemaphores[] = {handles->renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    check_res(
+        vkQueueSubmit(handles->gfxQueue, 1, &submitInfo, VK_NULL_HANDLE),
+        "vkQueueSubmit");
+
+    /* present */
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+
+    VkSwapchainKHR swapChains[] = {handles->swapchain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
+
+    vkQueuePresentKHR(handles->presentationQueue, &presentInfo);
+}
+
 int
 main()
 {
@@ -477,8 +550,11 @@ main()
 	init_vulkan(&handles);
 
 	while (!glfwWindowShouldClose(handles.window)) {
-		glfwPollEvents();
-	}
+        glfwPollEvents();
+        draw_frame(&handles);
+    }
+
+    vkDeviceWaitIdle(handles.device);
 
 	cleanup_vulkan(&handles);
 	cleanup_gui(&handles);
