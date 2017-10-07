@@ -55,13 +55,17 @@ create_command_buffers(handles_t *handles)
 
         vkCmdBeginRenderPass(handles->commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        /* bind gfx pipeline */
-        vkCmdBindPipeline(handles->commandBuffers[i],
-                          VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          handles->gfxPipeline);
+            /* bind gfx pipeline */
+            vkCmdBindPipeline(handles->commandBuffers[i],
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            handles->gfxPipeline);
 
-        /* draw call */
-        vkCmdDraw(handles->commandBuffers[i], 3, 1, 0, 0);
+            VkBuffer vertexBuffers[] = {handles->vertexBuffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(handles->commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+            /* draw call */
+            vkCmdDraw(handles->commandBuffers[i], 3, 1, 0, 0);
 
         /* end draw call */
         vkCmdEndRenderPass(handles->commandBuffers[i]);

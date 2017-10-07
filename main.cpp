@@ -13,6 +13,14 @@
 #include "gfx_pipeline.h"
 #include "frame_buf.h"
 #include "cmd_buf.h"
+#include "gpu_buf.h"
+
+const std::vector<Vertex> vertices =
+{
+    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
 
 static void
 init_gui(handles_t *handles)
@@ -448,6 +456,7 @@ init_vulkan(handles_t *handles)
     init_swapchain(handles);
     create_gfk_pipeline(handles);
     create_framebuffers(handles);
+    create_vertex_buffer(handles, vertices);
     create_command_pool(handles);
     create_command_buffers(handles);
     create_semaphores(handles);
@@ -474,6 +483,9 @@ cleanup_vulkan(handles_t *handles)
 
     /* destroy swapchain */
     vkDestroySwapchainKHR(handles->device, handles->swapchain, NULL);
+
+    /* vertix buffer */
+    vkDestroyBuffer(handles->device, handles->vertexBuffer, nullptr);
 
 	/* destroy debug callback handle */
 	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(
@@ -542,9 +554,9 @@ int
 main()
 {
 	//dump_extensions();
-	//dump_layers();
+    //dump_layers();
 
-	handles_t handles;
+    handles_t handles;
 
 	init_gui(&handles);
 	init_vulkan(&handles);
