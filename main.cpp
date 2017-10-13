@@ -17,9 +17,15 @@
 
 const std::vector<Vertex> vertices =
 {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}}
+};
+
+const std::vector<uint16_t> indices =
+{
+    0, 1, 2, 2, 3, 0
 };
 
 static void
@@ -456,8 +462,8 @@ init_vulkan(handles_t *handles)
     init_swapchain(handles);
     create_gfk_pipeline(handles);
     create_framebuffers(handles);
-    create_vertex_buffer(handles, vertices);
     create_command_pool(handles);
+    create_vertex_buffer(handles, vertices);
     create_command_buffers(handles);
     create_semaphores(handles);
 }

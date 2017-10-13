@@ -24,6 +24,12 @@ check_res(VkResult res, const char *msg)
 
 }
 
+const char *
+yes_no(VkBool32 b)
+{
+	return b ? "yes" : "no";
+}
+
 std::vector<char>
 read_file(const std::string& filename)
 {

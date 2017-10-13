@@ -50,12 +50,6 @@ dump_extensions()
 	}
 }
 
-static const char *
-yes_no(VkBool32 b)
-{
-	return b ? "yes" : "no";
-}
-
 static void dump_queues(handles_t *handles, VkPhysicalDevice device)
 {
 	uint32_t count;
@@ -105,7 +99,7 @@ dump_gfx_card_extensions(VkPhysicalDevice device)
 	}
 }
 
-void 
+void
 dump_gfx_cards(handles_t *handles)
 {
 	uint32_t deviceCount = 0;
@@ -141,6 +135,6 @@ dump_gfx_cards(handles_t *handles)
 
 		printf("--------\n");
 	}
-	
+
 }
 

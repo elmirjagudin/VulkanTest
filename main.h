@@ -69,5 +69,7 @@ typedef struct handles_s
     VkSemaphore renderFinishedSemaphore;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
 } handles_t;
 
