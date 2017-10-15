@@ -130,5 +130,30 @@ create_vertex_buffer(handles_t *handles, std::vector<Vertex> vertices)
 void
 create_index_buffer(handles_t *handles, std::vector<uint16_t> indices)
 {
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(handles,
+                 bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(handles->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t) bufferSize);
+    vkUnmapMemory(handles->device, stagingBufferMemory);
+
+    createBuffer(handles,
+                 bufferSize,
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                 handles->indexBuffer,
+                 handles->indexBufferMemory);
+
+    copyBuffer(handles, stagingBuffer, handles->indexBuffer, bufferSize);
+
+    vkDestroyBuffer(handles->device, stagingBuffer, nullptr);
+    vkFreeMemory(handles->device, stagingBufferMemory, nullptr);
 }

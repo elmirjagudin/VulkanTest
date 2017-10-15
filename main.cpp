@@ -20,7 +20,7 @@ const std::vector<Vertex> vertices =
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
     {{0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
     {{0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}}
+    {{-0.5f, 0.5f},  {1.0f, 1.0f, 1.0f}},
 };
 
 const std::vector<uint16_t> indices =
@@ -464,7 +464,8 @@ init_vulkan(handles_t *handles)
     create_framebuffers(handles);
     create_command_pool(handles);
     create_vertex_buffer(handles, vertices);
-    create_command_buffers(handles);
+    create_index_buffer(handles, indices);
+    create_command_buffers(handles, static_cast<uint32_t>(indices.size()));
     create_semaphores(handles);
 }
 
@@ -490,8 +491,11 @@ cleanup_vulkan(handles_t *handles)
     /* destroy swapchain */
     vkDestroySwapchainKHR(handles->device, handles->swapchain, NULL);
 
-    /* vertix buffer */
-    vkDestroyBuffer(handles->device, handles->vertexBuffer, nullptr);
+    /* destroy index buffer */
+    vkDestroyBuffer(handles->device, handles->indexBuffer, NULL);
+
+    /* destroy vertix buffer */
+    vkDestroyBuffer(handles->device, handles->vertexBuffer, NULL);
 
 	/* destroy debug callback handle */
 	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(

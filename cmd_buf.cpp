@@ -15,7 +15,7 @@ create_command_pool(handles_t *handles)
 }
 
 void
-create_command_buffers(handles_t *handles)
+create_command_buffers(handles_t *handles, uint32_t index_count)
 {
     handles->commandBuffers.resize(handles->swapChainFramebuffers.size());
 
@@ -57,15 +57,21 @@ create_command_buffers(handles_t *handles)
 
             /* bind gfx pipeline */
             vkCmdBindPipeline(handles->commandBuffers[i],
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            handles->gfxPipeline);
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              handles->gfxPipeline);
 
             VkBuffer vertexBuffers[] = {handles->vertexBuffer};
             VkDeviceSize offsets[] = {0};
             vkCmdBindVertexBuffers(handles->commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
+            vkCmdBindIndexBuffer(handles->commandBuffers[i],
+                                 handles->indexBuffer,
+                                 0, VK_INDEX_TYPE_UINT16);
+
             /* draw call */
-            vkCmdDraw(handles->commandBuffers[i], 3, 1, 0, 0);
+            vkCmdDrawIndexed(handles->commandBuffers[i],
+                             index_count,
+                             1, 0, 0, 0);
 
         /* end draw call */
         vkCmdEndRenderPass(handles->commandBuffers[i]);
