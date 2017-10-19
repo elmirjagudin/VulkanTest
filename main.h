@@ -43,6 +43,13 @@ struct Vertex
     }
 };
 
+struct UniformBufferObject
+{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 typedef struct handles_s
 {
     GLFWwindow* window;
@@ -63,13 +70,22 @@ typedef struct handles_s
     VkPipeline gfxPipeline;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
+
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+
+    VkBuffer uniformBuffer;
+    VkDeviceMemory uniformBufferMemory;
+
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSet;
 } handles_t;
 

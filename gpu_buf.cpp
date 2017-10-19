@@ -157,3 +157,13 @@ create_index_buffer(handles_t *handles, std::vector<uint16_t> indices)
     vkDestroyBuffer(handles->device, stagingBuffer, nullptr);
     vkFreeMemory(handles->device, stagingBufferMemory, nullptr);
 }
+
+void
+create_uniform_buffer(handles_t *handles)
+{
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    createBuffer(handles, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 handles->uniformBuffer,
+                 handles->uniformBufferMemory);
+}

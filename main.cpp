@@ -3,9 +3,11 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <string.h>
 
 #include <iostream>
+#include <chrono>
 
 #include "main.h"
 #include "utils.h"
@@ -460,11 +462,15 @@ init_vulkan(handles_t *handles)
 	 */
     init_device(handles);
     init_swapchain(handles);
+    create_descriptor_set_layout(handles);
     create_gfk_pipeline(handles);
     create_framebuffers(handles);
     create_command_pool(handles);
     create_vertex_buffer(handles, vertices);
     create_index_buffer(handles, indices);
+    create_uniform_buffer(handles);
+    create_descriptor_pool(handles);
+    create_descriptor_set(handles);
     create_command_buffers(handles, static_cast<uint32_t>(indices.size()));
     create_semaphores(handles);
 }
@@ -472,6 +478,8 @@ init_vulkan(handles_t *handles)
 static void
 cleanup_vulkan(handles_t *handles)
 {
+    printf("cleanup...\n");
+
     /* destroy semaphores */
     vkDestroySemaphore(handles->device, handles->imageAvailableSemaphore, NULL);
     vkDestroySemaphore(handles->device, handles->renderFinishedSemaphore, NULL);
@@ -488,14 +496,26 @@ cleanup_vulkan(handles_t *handles)
     /* destroy pipeline */
     vkDestroyPipelineLayout(handles->device, handles->pipelineLayout, NULL);
 
+    /* destroy descriptor set layout */
+    vkDestroyDescriptorSetLayout(handles->device, handles->descriptorSetLayout, NULL);
+
     /* destroy swapchain */
     vkDestroySwapchainKHR(handles->device, handles->swapchain, NULL);
 
+    /* destroy descriptor pool */
+    vkDestroyDescriptorPool(handles->device, handles->descriptorPool, NULL);
+
     /* destroy index buffer */
     vkDestroyBuffer(handles->device, handles->indexBuffer, NULL);
+    vkFreeMemory(handles->device, handles->indexBufferMemory, NULL);
 
     /* destroy vertix buffer */
     vkDestroyBuffer(handles->device, handles->vertexBuffer, NULL);
+    vkFreeMemory(handles->device, handles->vertexBufferMemory, NULL);
+
+    /* destroy uniform buffer */
+    vkDestroyBuffer(handles->device, handles->uniformBuffer, NULL);
+    vkFreeMemory(handles->device, handles->uniformBufferMemory, NULL);
 
 	/* destroy debug callback handle */
 	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(
@@ -508,6 +528,29 @@ cleanup_vulkan(handles_t *handles)
 
 	/* destroy vulkan instance */
 	vkDestroyInstance(handles->instance, NULL);
+}
+
+static void
+update_uniform_buffer(handles_t *handles)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+
+    UniformBufferObject ubo = {};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(
+        glm::radians(45.0f),
+        handles->swapchainExtend.width / (float) handles->swapchainExtend.height,
+        0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+
+    void* data;
+    vkMapMemory(handles->device, handles->uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+        memcpy(data, &ubo, sizeof(ubo));
+    vkUnmapMemory(handles->device, handles->uniformBufferMemory);
 }
 
 static void
@@ -545,6 +588,7 @@ draw_frame(handles_t *handles)
         vkQueueSubmit(handles->gfxQueue, 1, &submitInfo, VK_NULL_HANDLE),
         "vkQueueSubmit");
 
+
     /* present */
 
     VkPresentInfoKHR presentInfo = {};
@@ -573,6 +617,7 @@ main()
 
 	while (!glfwWindowShouldClose(handles.window)) {
         glfwPollEvents();
+        update_uniform_buffer(&handles);
         draw_frame(&handles);
     }
 

@@ -116,7 +116,7 @@ create_gfk_pipeline(handles_t *handles)
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
     /* multisampling */
@@ -144,13 +144,14 @@ create_gfk_pipeline(handles_t *handles)
     /* pipeline layout */
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &(handles->descriptorSetLayout);
     pipelineLayoutInfo.pushConstantRangeCount = 0;
 
     check_res(
         vkCreatePipelineLayout(
             handles->device, &pipelineLayoutInfo,
-            nullptr, &(handles->pipelineLayout)),
+            NULL, &(handles->pipelineLayout)),
         "error vkCreatePipelineLayout");
 
     /* set-up render pass */
@@ -183,4 +184,76 @@ create_gfk_pipeline(handles_t *handles)
     /* clean-up */
     vkDestroyShaderModule(handles->device, fragShaderModule, nullptr);
     vkDestroyShaderModule(handles->device, vertShaderModule, nullptr);
+}
+
+void
+create_descriptor_set_layout(handles_t *handles)
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = NULL;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    check_res(
+        vkCreateDescriptorSetLayout(
+            handles->device, &layoutInfo,
+            NULL, &(handles->descriptorSetLayout)),
+        "vkCreateDescriptorSetLayout");
+}
+
+void
+create_descriptor_pool(handles_t *handles)
+{
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = 1;
+
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = 1;
+
+    check_res(
+        vkCreateDescriptorPool(handles->device, &poolInfo, NULL, &(handles->descriptorPool)),
+        "vkCreateDescriptorPool");
+}
+
+void
+create_descriptor_set(handles_t *handles)
+{
+    VkDescriptorSetLayout layouts[] = {handles->descriptorSetLayout};
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = handles->descriptorPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = layouts;
+
+    check_res(
+        vkAllocateDescriptorSets(
+            handles->device, &allocInfo, &(handles->descriptorSet)),
+        "vkAllocateDescriptorSets");
+
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = handles->uniformBuffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+
+    VkWriteDescriptorSet descriptorWrite = {};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = handles->descriptorSet;
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets(handles->device, 1, &descriptorWrite, 0, nullptr);
 }

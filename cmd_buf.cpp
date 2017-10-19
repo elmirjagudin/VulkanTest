@@ -68,6 +68,12 @@ create_command_buffers(handles_t *handles, uint32_t index_count)
                                  handles->indexBuffer,
                                  0, VK_INDEX_TYPE_UINT16);
 
+            vkCmdBindDescriptorSets(
+                handles->commandBuffers[i],
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                handles->pipelineLayout, 0, 1, &(handles->descriptorSet),
+                0, NULL);
+
             /* draw call */
             vkCmdDrawIndexed(handles->commandBuffers[i],
                              index_count,
